@@ -17,15 +17,16 @@ import (
 )
 
 func main() {
+	var file *zip.FileHeader
 	arc, err := zip.OpenReader(os.Args[1])
 	if err != nil {
 		os.Exit(1)
 	}
 	defer arc.Close()
 
-	file := zhip.GetZipEntries(arc)
-	for ; file != nil; file = zhip.GetZipEntries(arc) {
-		fmt.Printf("%#v\n", file)
+	for notok := true; notok; notok = (file != nil) {
+		file = zhip.GetZipEntries(arc)	
+ 		fmt.Printf("%#v\n", file)
 	}
 
 	// verbose: "x %s, %lld bytes, ""%lld%s\n"
