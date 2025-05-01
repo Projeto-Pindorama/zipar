@@ -101,6 +101,9 @@ func list_files(arc *zip.ReadCloser) {
 }
 
 func extract_entry(file *zip.FileHeader) {
+	var err error
+	var dest *os.File
+
 	if fVerbose {
 		fmt.Printf("x %s ", file.Name)
 		if file.FileInfo().IsDir() {
@@ -113,24 +116,22 @@ func extract_entry(file *zip.FileHeader) {
 
 	dest_path := filepath.Join(destdir, file.Name)
 	if file.FileInfo().IsDir() {
-		err := os.MkdirAll(dest_path, file.Mode())
-		if err != nil {
-			fmt.Fprintf(os.Stderr,
-				"failed to create %s: %s\n",
-				dest_path, err)
-			os.Exit(1)
-		}
+		err = os.MkdirAll(dest_path, file.Mode())
 	} else {
+		var err_creat error /* So 'dest' isn't also a new variable. */
 		err_mkdir := os.MkdirAll(filepath.Dir(dest_path), 0755)
-		dest, err_creat := os.Create(dest_path)
-		err := errors.Join(err_mkdir, err_creat)
-		if err != nil {
-			fmt.Fprintf(os.Stderr,
-				"failed to create %s: %s\n",
-				dest_path, err)
-			os.Exit(1)
-		}
+		dest, err_creat = os.Create(dest_path)
+		err = errors.Join(err_mkdir, err_creat)
 		defer dest.Close()
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr,
+			"failed to create %s: %s\n",
+				dest_path, err)
+		os.Exit(1)
+	}
+
+	if !file.FileInfo().IsDir() {
 		zfile, err := areader.File[zhip.EntryNo[file.Name]].Open()
 		if err != nil {
 			fmt.Fprintf(os.Stderr,
