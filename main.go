@@ -11,6 +11,7 @@ package main
 
 import (
 	"archive/zip"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -72,7 +73,7 @@ func main() {
 			extract_entry(file)
 		}
 	} else {
-		os.Exit(1)
+		os.Exit(1) // TODO: Usage()
 	}
 }
 
@@ -100,9 +101,6 @@ func list_files(arc *zip.ReadCloser) {
 }
 
 func extract_entry(file *zip.FileHeader) {
-	var err error
-	var dest *os.File
-
 	if fVerbose {
 		fmt.Printf("x %s ", file.Name)
 		if file.FileInfo().IsDir() {
@@ -115,18 +113,24 @@ func extract_entry(file *zip.FileHeader) {
 
 	dest_path := filepath.Join(destdir, file.Name)
 	if file.FileInfo().IsDir() {
-		err = os.MkdirAll(dest_path, file.Mode())
+		err := os.MkdirAll(dest_path, file.Mode())
+		if err != nil {
+			fmt.Fprintf(os.Stderr,
+				"failed to create %s: %s\n",
+				dest_path, err)
+			os.Exit(1)
+		}
 	} else {
-		dest, err = os.Create(dest_path)
+		err_mkdir := os.MkdirAll(filepath.Dir(dest_path), 0755)
+		dest, err_creat := os.Create(dest_path)
+		err := errors.Join(err_mkdir, err_creat)
+		if err != nil {
+			fmt.Fprintf(os.Stderr,
+				"failed to create %s: %s\n",
+				dest_path, err)
+			os.Exit(1)
+		}
 		defer dest.Close()
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr,
-			"failed to create %s: %s\n",
-			dest_path, err)
-		os.Exit(1)
-	}
-	if !file.FileInfo().IsDir() {
 		zfile, err := areader.File[zhip.EntryNo[file.Name]].Open()
 		if err != nil {
 			fmt.Fprintf(os.Stderr,
@@ -138,7 +142,7 @@ func extract_entry(file *zip.FileHeader) {
 		wbytes, err := io.Copy(dest, zfile)
 		if uint64(wbytes) != uint64(file.UncompressedSize) {
 			fmt.Fprintf(os.Stderr,
-				"failed to write %d bytes to the disk; wrote just %d: %s",
+				"failed to write %d bytes to the disk; wrote just %d: %s\n",
 				file.UncompressedSize, wbytes, err)
 			os.Exit(1)
 		}
