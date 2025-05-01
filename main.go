@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"pindorama.net.br/libcmon/zhip"
 	"rsc.io/getopt"
 	"strconv"
@@ -24,6 +25,7 @@ var (
 	fVerbose         bool
 	fTableOfContents bool
 	fExtract         bool
+	destdir          string
 	archive          string
 	areader          *zip.ReadCloser
 )
@@ -38,6 +40,8 @@ func main() {
 		"List the contents of the zipfile.")
 	flag.BoolVar(&fExtract, "extract", false,
 		"The named files are extracted from the zipfile.")
+	flag.StringVar(&destdir, "chdir", ".",
+		"Use the next argument as the directory to place the files into.")
 	flag.StringVar(&archive, "file", "",
 		"Use the next argument as the name of the archive.")
 	getopt.Aliases(
@@ -45,6 +49,7 @@ func main() {
 		"t", "toc",
 		"x", "extract",
 		"f", "file",
+		"C", "chdir",
 	)
 	getopt.Parse()
 
@@ -66,6 +71,8 @@ func main() {
 			}
 			extract_entry(file)
 		}
+	} else {
+		os.Exit(1)
 	}
 }
 
@@ -106,20 +113,21 @@ func extract_entry(file *zip.FileHeader) {
 		}
 	}
 
+	dest_path := filepath.Join(destdir, file.Name)
 	if file.FileInfo().IsDir() {
-		err = os.MkdirAll(file.Name, file.Mode())
+		err = os.MkdirAll(dest_path, file.Mode())
 	} else {
-		dest, err = os.Create(file.Name)
+		dest, err = os.Create(dest_path)
 		defer dest.Close()
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr,
 			"failed to create %s: %s\n",
-			file.Name, err)
+			dest_path, err)
 		os.Exit(1)
 	}
 	if !file.FileInfo().IsDir() {
-		zfile, err := areader.File[(zhip.EntryNo[file.Name])].Open()
+		zfile, err := areader.File[zhip.EntryNo[file.Name]].Open()
 		if err != nil {
 			fmt.Fprintf(os.Stderr,
 				"failed to open %s from %s: %s\n",
