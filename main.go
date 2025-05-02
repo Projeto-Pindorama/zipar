@@ -29,6 +29,7 @@ var (
 	destdir          string
 	archive          string
 	areader          *zip.ReadCloser
+	largest_file     int
 )
 
 func main() {
@@ -67,52 +68,50 @@ func main() {
 			archive, err)
 	}
 	defer areader.Close()
-
-	if fTableOfContents {
-		list_files(areader)
-	} else if fExtract {
-		zipwalk:
+	if fTableOfContents || fExtract {
+		/*
+		 * Obtain the largest file size integer
+		 * length for the '-t' option formatting.
+		 */
+		if fTableOfContents {
+			largest_file = len(strconv.FormatUint(
+				uint64(zhip.GetZipLargestEntry(areader)), 10))
+		}
+	zipwalk:
 		for ;; {
 			file := zhip.GetZipEntries(areader)
 			if file == nil {
 				break
 			}
 			/* Check if the user specified files to be extracted. */
-			if (nextra > 0) {
-				for f := 0; f < nextra; f++ {
-					if !strings.HasPrefix(extra[f], file.Name) {
-						continue zipwalk
-					}
+			for f := 0; nextra != 0 && f < nextra; f++ {
+				if !strings.HasPrefix(extra[f], file.Name) {
+					continue zipwalk
 				}
 			}
-			extract_entry(file)
+			if fTableOfContents {
+				print_entry_info(file)
+			} else if fExtract {
+				extract_entry(file)
+			}
 		}
 	} else {
 		os.Exit(1) // TODO: Usage()
 	}
 }
 
-func list_files(arc *zip.ReadCloser) {
-	var file *zip.FileHeader
-
-	largest_file := len(strconv.FormatUint(
-		uint64(zhip.GetZipLargestEntry(arc)), 10))
-	for ;; {
-		if file = zhip.GetZipEntries(arc); file == nil {
-			break
-		}
-		if fVerbose {
-			fmt.Printf("%*d %s:%02.0f%% %10s %s ",
-				largest_file,
-				file.UncompressedSize,
-				zhip.GetCompressionMethod(file),
-				zhip.GetCompressionRatio(file),
-				file.Mode().String(),
-				file.Modified.Format("2006-01-02 15:04:05"),
-			)
-		}
-		fmt.Println(file.Name)
+func print_entry_info(file *zip.FileHeader) {
+	if fVerbose {
+		fmt.Printf("%*d %s:%02.0f%% %10s %s ",
+			largest_file,
+			file.UncompressedSize,
+			zhip.GetCompressionMethod(file),
+			zhip.GetCompressionRatio(file),
+			file.Mode().String(),
+			file.Modified.Format("2006-01-02 15:04:05"),
+		)
 	}
+	fmt.Println(file.Name)
 }
 
 func extract_entry(file *zip.FileHeader) {
@@ -142,7 +141,7 @@ func extract_entry(file *zip.FileHeader) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr,
 			"failed to create %s: %s\n",
-				dest_path, err)
+			dest_path, err)
 		os.Exit(1)
 	}
 
