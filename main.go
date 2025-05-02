@@ -85,7 +85,7 @@ func main() {
 			}
 			/* Check if the user specified files to be extracted. */
 			for f := 0; nextra != 0 && f < nextra; f++ {
-				if !strings.HasPrefix(extra[f], file.Name) {
+				if !strings.HasPrefix(file.Name, extra[f]) {
 					continue zipwalk
 				}
 			}
