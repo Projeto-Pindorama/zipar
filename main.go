@@ -4,7 +4,6 @@
  * Copyright (C) 2025 Luiz Antônio Rangel (takusuman)
  *
  * SPDX-Licence-Identifier: MIT
- *
  */
 
 package main
@@ -20,6 +19,7 @@ import (
 	"pindorama.net.br/libcmon/zhip"
 	"rsc.io/getopt"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -54,6 +54,12 @@ func main() {
 	)
 	getopt.Parse()
 
+	/*
+	 * Extra arguments; possibly specific
+	 * files to be extracted.
+	 */
+	extra := flag.Args()
+	nextra := flag.NArg()
 	areader, err = zip.OpenReader(archive)
 	if err != nil {
 		fmt.Fprintf(os.Stderr,
@@ -65,10 +71,19 @@ func main() {
 	if fTableOfContents {
 		list_files(areader)
 	} else if fExtract {
-		for {
+		zipwalk:
+		for ;; {
 			file := zhip.GetZipEntries(areader)
 			if file == nil {
 				break
+			}
+			/* Check if the user specified files to be extracted. */
+			if (nextra > 0) {
+				for f := 0; f < nextra; f++ {
+					if !strings.HasPrefix(extra[f], file.Name) {
+						continue zipwalk
+					}
+				}
 			}
 			extract_entry(file)
 		}
@@ -82,7 +97,7 @@ func list_files(arc *zip.ReadCloser) {
 
 	largest_file := len(strconv.FormatUint(
 		uint64(zhip.GetZipLargestEntry(arc)), 10))
-	for {
+	for ;; {
 		if file = zhip.GetZipEntries(arc); file == nil {
 			break
 		}
