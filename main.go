@@ -10,6 +10,7 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 )
 
 var (
+	fJSON            bool
 	fExplode         bool
 	fVerbose         bool
 	fTableOfContents bool
@@ -37,9 +39,11 @@ func main() {
 	var err error
 
 	/* Options. */
+	flag.BoolVar(&fJSON, "json", false,
+		"Print archive information as JSON.")
 	flag.BoolVar(&fExplode, "explode", false,
-		"Explode the archive into the disk, ignoring directory hierarchy. " +
-		"Can also be used when creating archives.")
+		"Explode the archive into the disk, ignoring directory hierarchy. "+
+			"Can also be used when creating archives.")
 	flag.BoolVar(&fVerbose, "verbose", false,
 		"Enable verbose output.")
 	flag.BoolVar(&fTableOfContents, "toc", false,
@@ -70,7 +74,6 @@ func main() {
 	extra := flag.Args()
 	nextra := flag.NArg()
 
-
 	if len(os.Args) < 2 {
 		flag.Usage()
 	}
@@ -91,13 +94,36 @@ func main() {
 				archive, err)
 		}
 		defer areader.Close()
-		/*
-		 * Obtain the largest file size integer
-		 * length for the '-t' option formatting.
-		 */
+
 		if fTableOfContents {
-			largest_file = len(strconv.FormatUint(
-				uint64(zhip.GetZipLargestEntry(areader)), 10))
+			if fJSON {
+				/*
+				 * Obtain the entire *zip.FileHeader slice,
+				 * Marshal it and print as JSON.
+				 */
+				eslice := zhip.GetZipESlice(areader)
+				jsoninfo, err := json.MarshalIndent(eslice, "", "  ")
+				if err != nil {
+					fmt.Fprintf(os.Stderr,
+						"Error marshaling JSON: %s\n",
+						err)
+					os.Exit(1)
+				}
+				fmt.Print(string(jsoninfo))
+				os.Exit(0)
+			} else {
+				/*
+				 * Obtain the largest file size integer
+				 * length for the '-t' option formatting.
+				 */
+				largest_file = len(strconv.FormatUint(
+					uint64(zhip.GetZipLargestEntry(areader)), 10))
+			}
+		} else if fJSON { /* For '-x' with --json. */
+			/* Open and close JSON object in
+			 * case of fJSON being true. */
+			fmt.Println("[")
+			defer fmt.Print("]")
 		}
 	zipwalk:
 		for ;; {
@@ -120,7 +146,6 @@ func main() {
 				extract_entry(file)
 			}
 		}
-//	} else {
 	}
 }
 
@@ -143,7 +168,8 @@ func extract_entry(file *zip.FileHeader) {
 	var dest_path string
 	var dest *os.File
 
-	if fVerbose {
+	/* Business as usual. */
+	if fVerbose && !fJSON {
 		fmt.Printf("x %s ", file.Name)
 		if file.FileInfo().IsDir() || !fExplode {
 			fmt.Println("directory")
@@ -151,6 +177,15 @@ func extract_entry(file *zip.FileHeader) {
 			fmt.Printf("%d bytes\n",
 				file.UncompressedSize)
 		}
+	} else if fJSON {
+		jsoninfo, err := json.MarshalIndent(file, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr,
+				"Failed to parse %T to JSON: %s\n",
+				file, err)
+			return
+		}
+		fmt.Printf("%s,\n", string(jsoninfo))
 	}
 
 	/* Check if we are extracting the entire directory hierarchy.
@@ -163,7 +198,7 @@ func extract_entry(file *zip.FileHeader) {
 		dest_path = filepath.Join(destdir, filepath.Base(file.Name))
 	}
 
-	if file.FileInfo().IsDir() || !fExplode {
+	if file.FileInfo().IsDir() && !fExplode {
 		err = os.MkdirAll(dest_path, file.Mode())
 	} else {
 		var err_creat error /* So 'dest' isn't also a new variable. */
@@ -209,11 +244,11 @@ func extract_entry(file *zip.FileHeader) {
 }
 
 func usage() {
-        fmt.Fprintf(flag.CommandLine.Output(),
+	fmt.Fprintf(flag.CommandLine.Output(),
 		"%s: Missing command, must specify -x, -c or -t.\n",
 		os.Args[0])
-        fmt.Fprintf(flag.CommandLine.Output(),
+	fmt.Fprintf(flag.CommandLine.Output(),
 		"Usage of %s:\n",
 		os.Args[0])
-        getopt.PrintDefaults()
+	getopt.PrintDefaults()
 }
