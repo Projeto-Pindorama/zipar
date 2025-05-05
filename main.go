@@ -86,66 +86,71 @@ func main() {
 		os.Exit(1)
 	}
 
-	if fTableOfContents || fExtract {
-		areader, err = zip.OpenReader(archive)
-		if err != nil {
-			fmt.Fprintf(os.Stderr,
-				"failed to open %s: %s\n",
-				archive, err)
-		}
-		defer areader.Close()
+	/*
+	 * "In America, there's plenty of light beer and you can always
+	 * find a party! In Russia, the Party always finds you."
+	 */
+	switch (true) {
+		case fTableOfContents, fExtract:
+			areader, err = zip.OpenReader(archive)
+			if err != nil {
+				fmt.Fprintf(os.Stderr,
+					"failed to open %s: %s\n",
+					archive, err)
+			}
+			defer areader.Close()
 
-		if fTableOfContents {
-			if fJSON {
-				/*
-				 * Obtain the entire *zip.FileHeader slice,
-				 * Marshal it and print as JSON.
-				 */
-				eslice := zhip.GetZipESlice(areader)
-				jsoninfo, err := json.MarshalIndent(eslice, "", "  ")
-				if err != nil {
-					fmt.Fprintf(os.Stderr,
-						"Error marshaling JSON: %s\n",
-						err)
-					os.Exit(1)
+			switch (true) {
+				case (fTableOfContents && fJSON):
+					/*
+					 * Obtain the entire *zip.FileHeader slice,
+					 * Marshal it and print as JSON.
+					 */
+					eslice := zhip.GetZipESlice(areader)
+					jsoninfo, err := json.MarshalIndent(eslice, "", "  ")
+					if err != nil {
+						fmt.Fprintf(os.Stderr,
+							"Error marshaling JSON: %s\n",
+							err)
+						os.Exit(1)
+					}
+					fmt.Print(string(jsoninfo))
+					os.Exit(0)
+				case fTableOfContents:
+					/*
+					 * Obtain the largest file size integer
+					 * length for the '-t' option formatting.
+					 */
+					largest_file = len(strconv.FormatUint(
+						uint64(zhip.GetZipLargestEntry(areader)), 10))
+				case (fExtract && fJSON): /* For '-x' with --json. */
+					/* Open and close JSON object in
+					 * case of fJSON being true. */
+					fmt.Println("[")
+					defer fmt.Print("]")
+			}
+		zipwalk:
+			for ;; {
+				file := zhip.GetZipEntries(areader)
+				if file == nil {
+					break
 				}
-				fmt.Print(string(jsoninfo))
-				os.Exit(0)
-			} else {
 				/*
-				 * Obtain the largest file size integer
-				 * length for the '-t' option formatting.
+				 * Check if the user specified files to be extracted.
+				 * Perhaps this could go into libcmon too.
 				 */
-				largest_file = len(strconv.FormatUint(
-					uint64(zhip.GetZipLargestEntry(areader)), 10))
-			}
-		} else if fJSON { /* For '-x' with --json. */
-			/* Open and close JSON object in
-			 * case of fJSON being true. */
-			fmt.Println("[")
-			defer fmt.Print("]")
-		}
-	zipwalk:
-		for ;; {
-			file := zhip.GetZipEntries(areader)
-			if file == nil {
-				break
-			}
-			/*
-			 * Check if the user specified files to be extracted.
-			 * Perhaps this could go into libcmon too.
-			 */
-			for f := 0; nextra != 0 && f < nextra; f++ {
-				if !strings.HasPrefix(file.Name, extra[f]) {
-					continue zipwalk
+				for f := 0; nextra != 0 && f < nextra; f++ {
+					if !strings.HasPrefix(file.Name, extra[f]) {
+						continue zipwalk
+					}
+				}
+				switch (true) {
+				case fTableOfContents:
+					print_entry_info(file)
+				case fExtract:
+					extract_entry(file)
 				}
 			}
-			if fTableOfContents {
-				print_entry_info(file)
-			} else if fExtract {
-				extract_entry(file)
-			}
-		}
 	}
 }
 
