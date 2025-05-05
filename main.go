@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	fExplode         bool
 	fVerbose         bool
 	fTableOfContents bool
 	fExtract         bool
@@ -36,6 +37,9 @@ func main() {
 	var err error
 
 	/* Options. */
+	flag.BoolVar(&fExplode, "explode", false,
+		"Explode the archive into the disk, ignoring directory hierarchy. " +
+		"Can also be used when creating archives.")
 	flag.BoolVar(&fVerbose, "verbose", false,
 		"Enable verbose output.")
 	flag.BoolVar(&fTableOfContents, "toc", false,
@@ -47,6 +51,7 @@ func main() {
 	flag.StringVar(&archive, "file", "",
 		"Use the next argument as the name of the archive.")
 	getopt.Aliases(
+		"d", "explode",
 		"v", "verbose",
 		"t", "toc",
 		"x", "extract",
@@ -54,21 +59,38 @@ func main() {
 		"C", "chdir",
 	)
 	getopt.Parse()
+	flag.Usage = usage
 
 	/*
 	 * Extra arguments; possibly specific
-	 * files to be extracted.
+	 * files to be extracted and, for sure,
+	 * files to be included in a zipfile
+	 * --- in case of the '-c' option.
 	 */
 	extra := flag.Args()
 	nextra := flag.NArg()
-	areader, err = zip.OpenReader(archive)
-	if err != nil {
-		fmt.Fprintf(os.Stderr,
-			"failed to open %s: %s\n",
-			archive, err)
+
+
+	if len(os.Args) < 2 {
+		flag.Usage()
 	}
-	defer areader.Close()
+
+	if archive == "" {
+		if fTableOfContents || fExtract {
+			fmt.Fprintln(os.Stderr,
+				"Refusing to read archive contents from the terminal.")
+		}
+		os.Exit(1)
+	}
+
 	if fTableOfContents || fExtract {
+		areader, err = zip.OpenReader(archive)
+		if err != nil {
+			fmt.Fprintf(os.Stderr,
+				"failed to open %s: %s\n",
+				archive, err)
+		}
+		defer areader.Close()
 		/*
 		 * Obtain the largest file size integer
 		 * length for the '-t' option formatting.
@@ -83,7 +105,10 @@ func main() {
 			if file == nil {
 				break
 			}
-			/* Check if the user specified files to be extracted. */
+			/*
+			 * Check if the user specified files to be extracted.
+			 * Perhaps this could go into libcmon too.
+			 */
 			for f := 0; nextra != 0 && f < nextra; f++ {
 				if !strings.HasPrefix(file.Name, extra[f]) {
 					continue zipwalk
@@ -95,8 +120,7 @@ func main() {
 				extract_entry(file)
 			}
 		}
-	} else {
-		os.Exit(1) // TODO: Usage()
+//	} else {
 	}
 }
 
@@ -116,11 +140,12 @@ func print_entry_info(file *zip.FileHeader) {
 
 func extract_entry(file *zip.FileHeader) {
 	var err error
+	var dest_path string
 	var dest *os.File
 
 	if fVerbose {
 		fmt.Printf("x %s ", file.Name)
-		if file.FileInfo().IsDir() {
+		if file.FileInfo().IsDir() || !fExplode {
 			fmt.Println("directory")
 		} else {
 			fmt.Printf("%d bytes\n",
@@ -128,11 +153,24 @@ func extract_entry(file *zip.FileHeader) {
 		}
 	}
 
-	dest_path := filepath.Join(destdir, file.Name)
-	if file.FileInfo().IsDir() {
+	/* Check if we are extracting the entire directory hierarchy.
+	 * For some reason, this is an option that has been requisited
+	 * per users of Info-ZIP's unzip command for some years, so we
+	 * will be having it implemented here as well. */
+	if !fExplode { /* Default. */
+		dest_path = filepath.Join(destdir, file.Name)
+	} else {
+		dest_path = filepath.Join(destdir, filepath.Base(file.Name))
+	}
+
+	if file.FileInfo().IsDir() || !fExplode {
 		err = os.MkdirAll(dest_path, file.Mode())
 	} else {
 		var err_creat error /* So 'dest' isn't also a new variable. */
+		/* Not to be preoccupied with os.MkdirAll() and fExplode, since
+		 * we've already basename()'d the file.Name and the dirname() of
+		 * it will be something as the destination directory --- informed
+		 * per '-C' or just the current working directory. */
 		err_mkdir := os.MkdirAll(filepath.Dir(dest_path), 0755)
 		dest, err_creat = os.Create(dest_path)
 		err = errors.Join(err_mkdir, err_creat)
@@ -168,4 +206,14 @@ func extract_entry(file *zip.FileHeader) {
 				file.Mode(), dest.Name(), err)
 		}
 	}
+}
+
+func usage() {
+        fmt.Fprintf(flag.CommandLine.Output(),
+		"%s: Missing command, must specify -x, -c or -t.\n",
+		os.Args[0])
+        fmt.Fprintf(flag.CommandLine.Output(),
+		"Usage of %s:\n",
+		os.Args[0])
+        getopt.PrintDefaults()
 }
