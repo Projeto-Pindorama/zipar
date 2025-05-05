@@ -171,12 +171,6 @@ func extract_entry(file *zip.FileHeader) {
 	/* Business as usual. */
 	if fVerbose && !fJSON {
 		fmt.Printf("x %s ", file.Name)
-		if file.FileInfo().IsDir() || !fExplode {
-			fmt.Println("directory")
-		} else {
-			fmt.Printf("%d bytes\n",
-				file.UncompressedSize)
-		}
 	} else if fJSON {
 		jsoninfo, err := json.MarshalIndent(file, "", "  ")
 		if err != nil {
@@ -200,6 +194,9 @@ func extract_entry(file *zip.FileHeader) {
 
 	if file.FileInfo().IsDir() && !fExplode {
 		err = os.MkdirAll(dest_path, file.Mode())
+		if fVerbose {
+			fmt.Println("directory")
+		}
 	} else {
 		var err_creat error /* So 'dest' isn't also a new variable. */
 		/* Not to be preoccupied with os.MkdirAll() and fExplode, since
@@ -239,6 +236,9 @@ func extract_entry(file *zip.FileHeader) {
 			fmt.Fprintf(os.Stderr,
 				"failed to restore permissions %04o for file %s: %s\n",
 				file.Mode(), dest.Name(), err)
+		}
+		if fVerbose {
+			fmt.Printf("%d bytes\n", wbytes)
 		}
 	}
 }
