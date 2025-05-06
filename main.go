@@ -74,16 +74,8 @@ func main() {
 	extra := flag.Args()
 	nextra := flag.NArg()
 
-	if len(os.Args) < 2 {
+	if len(os.Args) < 2 || archive == "" {
 		flag.Usage()
-	}
-
-	if archive == "" {
-		if fTableOfContents || fExtract {
-			fmt.Fprintln(os.Stderr,
-				"Refusing to read archive contents from the terminal.")
-		}
-		os.Exit(1)
 	}
 
 	/*
@@ -145,10 +137,10 @@ func main() {
 					}
 				}
 				switch (true) {
-				case fTableOfContents:
-					print_entry_info(file)
-				case fExtract:
-					extract_entry(file)
+					case fTableOfContents:
+						print_entry_info(file)
+					case fExtract:
+						extract_entry(file)
 				}
 			}
 	}
@@ -199,7 +191,7 @@ func extract_entry(file *zip.FileHeader) {
 
 	if file.FileInfo().IsDir() && !fExplode {
 		err = os.MkdirAll(dest_path, file.Mode())
-		if fVerbose {
+		if fVerbose && !fJSON {
 			fmt.Println("directory")
 		}
 	} else {
@@ -242,18 +234,16 @@ func extract_entry(file *zip.FileHeader) {
 				"failed to restore permissions %04o for file %s: %s\n",
 				file.Mode(), dest.Name(), err)
 		}
-		if fVerbose {
+		if fVerbose && !fJSON {
 			fmt.Printf("%d bytes\n", wbytes)
 		}
 	}
 }
 
 func usage() {
+	/* getopt.PrintDefaults() will already be executed. */
 	fmt.Fprintf(flag.CommandLine.Output(),
 		"%s: Missing command, must specify -x, -c or -t.\n",
 		os.Args[0])
-	fmt.Fprintf(flag.CommandLine.Output(),
-		"Usage of %s:\n",
-		os.Args[0])
-	getopt.PrintDefaults()
+	os.Exit(1)
 }
