@@ -116,6 +116,12 @@ func main() {
 					 * Marshal it and print as JSON.
 					 */
 					eslice := zhip.GetZipESlice(areader)
+					/*
+					 * TODO: Instead of using
+					 * zip.FileHeader, create a new struct at
+					 * libcmon that contains more useful
+					 * information for command-line usage.
+					 */
 					jsoninfo, err := json.MarshalIndent(eslice, "", "  ")
 					if err != nil {
 						fmt.Fprintf(os.Stderr,
@@ -181,13 +187,22 @@ func record_entries(files []string) {
 	for f := 0; f < len(files); f++ {
 		newent := files[f]
 		nentinfo, err := os.Stat(newent)
+
 		if fVerbose {
 			fmt.Printf("a %s ", newent)
 		}
 		wbytes, err := record_entry(newent)
 		if err != nil {
-			fmt.Println(err) /* Just for debugging. */
+			fmt.Fprintf(os.Stderr,
+				"Failed to record entry '%s' into zipfile: %s\n", 
+				newent, err)
 		}
+
+		/*
+		 * Recursive directory logic.
+		 * TODO: Perhaps record_dents_recursively()
+		 * can be reduced into this.
+		 */
 		if nentinfo.IsDir() {
 			if fVerbose {
 				fmt.Println("directory")
@@ -206,6 +221,7 @@ func record_entries(files []string) {
 	}
 }
 
+/* TODO: Sort of "gambiarrento". Of course this will have to change. */
 func record_dents_recursively(dir string) error {
 	direntries, err := os.ReadDir(dir)
 	if err != nil {
