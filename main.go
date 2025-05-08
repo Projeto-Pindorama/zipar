@@ -97,27 +97,7 @@ func main() {
 			defer newfile.Close()
 			awriter = zip.NewWriter(newfile)
 			/* Assuming extra arguments as files to be added. */
-			for f := 0; f < len(extra); f++ {
-				newent := extra[f]
-				nentinfo, err := os.Stat(newent)
-				_, err := record_entry(newent)
-				if err != nil {
-					fmt.Println(err) /* Just for debugging. */
-				}
-				if nentinfo.IsDir() {
-					dir := newent
-					direntries, err := os.ReadDir(dir)
-					if err != nil {
-						fmt.Fprintln(os.Stderr,
-							"Failed to read directory %s: %s\n",
-							dir, err)
-					}
-					for e := 0; e < len(direntries); e++ {
-						record_entry(direntries[e].Name())
-					}
-
-				}
-			}
+			record_entries(extra)
 			_ = awriter.Close()
 		case fTableOfContents, fExtract:
 			areader, err = zip.OpenReader(archive)
@@ -194,6 +174,54 @@ func print_entry_info(file *zip.FileHeader) {
 		)
 	}
 	fmt.Println(file.Name)
+}
+
+func record_entries(files []string) {
+	for f := 0; f < len(files); f++ {
+		newent := files[f]
+		nentinfo, err := os.Stat(newent)
+		if fVerbose {
+			fmt.Printf("a %s ", newent)
+		}
+		wbytes, err := record_entry(newent)
+		if err != nil {
+			fmt.Println(err) /* Just for debugging. */
+		}
+		if nentinfo.IsDir() {
+			if fVerbose {
+				fmt.Println("directory")
+			}
+			err := record_dents_recursively(newent)
+			if err != nil {
+				fmt.Fprintln(os.Stderr,
+				"Failed to record directory %s to zipfile: %s\n",
+					newent, err)
+			}
+		} else {
+			if fVerbose {
+				fmt.Printf("%d bytes\n", wbytes)
+			}
+		}
+	}
+}
+
+func record_dents_recursively(dir string) (error) {
+	direntries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for e := 0; e < len(direntries); e++ {
+		dentry := direntries[e].Name()
+		dentry_fpath := filepath.Join(dir, dentry)
+		record_entries([]string{dentry_fpath})
+		if direntries[e].IsDir() {
+			err := record_dents_recursively(dentry_fpath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 /* Possibly moving this to libcmon. */
