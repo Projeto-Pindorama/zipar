@@ -27,11 +27,13 @@ var (
 	fJSON            bool
 	fExplode         bool
 	fVerbose         bool
+	fCreate         bool
 	fTableOfContents bool
 	fExtract         bool
 	destdir          string
 	archive          string
 	areader          *zip.ReadCloser
+	awriter          *zip.Writer
 	largest_file     int
 )
 
@@ -46,6 +48,8 @@ func main() {
 			"Can also be used when creating archives.")
 	flag.BoolVar(&fVerbose, "verbose", false,
 		"Enable verbose output.")
+	flag.BoolVar(&fCreate, "create", false,
+		"Create a new zipfile and write named files into it.")
 	flag.BoolVar(&fTableOfContents, "toc", false,
 		"List the contents of the zipfile.")
 	flag.BoolVar(&fExtract, "extract", false,
@@ -57,6 +61,7 @@ func main() {
 	getopt.Aliases(
 		"d", "explode",
 		"v", "verbose",
+		"c", "create",
 		"t", "toc",
 		"x", "extract",
 		"f", "file",
@@ -83,6 +88,37 @@ func main() {
 	 * find a party! In Russia, the Party always finds you."
 	 */
 	switch (true) {
+		case fCreate:
+			newfile, err := os.Create(archive)
+			if err != nil {
+				fmt.Fprintf(os.Stderr,
+					"Failed to create %s: %s\n", archive, err)
+			}
+			defer newfile.Close()
+			awriter = zip.NewWriter(newfile)
+			/* Assuming extra arguments as files to be added. */
+			for f := 0; f < len(extra); f++ {
+				newent := extra[f]
+				nentinfo, err := os.Stat(newent)
+				_, err := record_entry(newent)
+				if err != nil {
+					fmt.Println(err) /* Just for debugging. */
+				}
+				if nentinfo.IsDir() {
+					dir := newent
+					direntries, err := os.ReadDir(dir)
+					if err != nil {
+						fmt.Fprintln(os.Stderr,
+							"Failed to read directory %s: %s\n",
+							dir, err)
+					}
+					for e := 0; e < len(direntries); e++ {
+						record_entry(direntries[e].Name())
+					}
+
+				}
+			}
+			_ = awriter.Close()
 		case fTableOfContents, fExtract:
 			areader, err = zip.OpenReader(archive)
 			if err != nil {
@@ -158,6 +194,41 @@ func print_entry_info(file *zip.FileHeader) {
 		)
 	}
 	fmt.Println(file.Name)
+}
+
+/* Possibly moving this to libcmon. */
+func record_entry(name string) (int, error) {
+	var wbytes int
+	file, err := os.Stat(name)
+	if err != nil {
+		return 0, err
+	}
+
+	if file.IsDir() {
+		/*
+		 * From 'go doc zip.Create':
+		 * "To create a directory instead of a file,
+		 * add a trailing slash to the name."
+		 */
+		 if name[(len(name) - 1):] != "/" {
+			 name += "/"
+		 }
+	}
+	ent, err := awriter.Create(name)
+	if err != nil {
+		return 0, err
+	}
+	if !file.IsDir() {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			return 0, err
+		}
+		wbytes, err = ent.Write(data)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return wbytes, nil
 }
 
 func extract_entry(file *zip.FileHeader) {
