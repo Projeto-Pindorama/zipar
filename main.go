@@ -27,7 +27,7 @@ var (
 	fJSON            bool
 	fExplode         bool
 	fVerbose         bool
-	fCreate         bool
+	fCreate          bool
 	fTableOfContents bool
 	fExtract         bool
 	destdir          string
@@ -87,7 +87,7 @@ func main() {
 	 * "In America, there's plenty of light beer and you can always
 	 * find a party! In Russia, the Party always finds you."
 	 */
-	switch (true) {
+	switch true {
 		case fCreate:
 			newfile, err := os.Create(archive)
 			if err != nil {
@@ -96,6 +96,7 @@ func main() {
 			}
 			defer newfile.Close()
 			awriter = zip.NewWriter(newfile)
+
 			/* Assuming extra arguments as files to be added. */
 			record_entries(extra)
 			_ = awriter.Close()
@@ -108,7 +109,7 @@ func main() {
 			}
 			defer areader.Close()
 
-			switch (true) {
+			switch true {
 				case (fTableOfContents && fJSON):
 					/*
 					 * Obtain the entire *zip.FileHeader slice,
@@ -137,7 +138,7 @@ func main() {
 					fmt.Println("[")
 					defer fmt.Print("]")
 			}
-		zipwalk:
+			zipwalk:
 			for ;; {
 				file := zhip.GetZipEntries(areader)
 				if file == nil {
@@ -152,7 +153,7 @@ func main() {
 						continue zipwalk
 					}
 				}
-				switch (true) {
+				switch true {
 					case fTableOfContents:
 						print_entry_info(file)
 					case fExtract:
@@ -194,7 +195,7 @@ func record_entries(files []string) {
 			err := record_dents_recursively(newent)
 			if err != nil {
 				fmt.Fprintln(os.Stderr,
-				"Failed to record directory %s to zipfile: %s\n",
+					"Failed to record directory %s to zipfile: %s\n",
 					newent, err)
 			}
 		} else {
@@ -205,7 +206,7 @@ func record_entries(files []string) {
 	}
 }
 
-func record_dents_recursively(dir string) (error) {
+func record_dents_recursively(dir string) error {
 	direntries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -238,14 +239,19 @@ func record_entry(name string) (int, error) {
 		 * "To create a directory instead of a file,
 		 * add a trailing slash to the name."
 		 */
-		 if name[(len(name) - 1):] != "/" {
-			 name += "/"
-		 }
+		if name[(len(name)-1):] != "/" {
+			name += "/"
+		}
 	}
-	ent, err := awriter.Create(name)
+	entfhdr, err_fhdr := zip.FileInfoHeader(file)
+	/* TODO: Add option to select the compression method. */
+	entfhdr.Method = zip.Deflate
+	ent, err_creat := awriter.CreateHeader(entfhdr)
+	err = errors.Join(err_fhdr, err_creat)
 	if err != nil {
 		return 0, err
 	}
+
 	if !file.IsDir() {
 		data, err := os.ReadFile(name)
 		if err != nil {
@@ -256,6 +262,7 @@ func record_entry(name string) (int, error) {
 			return 0, err
 		}
 	}
+
 	return wbytes, nil
 }
 
