@@ -261,7 +261,9 @@ func record_entry(name string) (int, error) {
 	}
 	entfhdr, err_fhdr := zip.FileInfoHeader(file)
 	/* TODO: Add option to select the compression method. */
-	entfhdr.Method = zip.Deflate
+	if !file.IsDir() {
+		entfhdr.Method = zip.Deflate
+	}
 	ent, err_creat := awriter.CreateHeader(entfhdr)
 	err = errors.Join(err_fhdr, err_creat)
 	if err != nil {
