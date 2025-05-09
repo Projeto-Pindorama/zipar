@@ -187,11 +187,6 @@ func record_entries(awriter *zip.Writer, files []string) {
 		newent := files[f]
 		nentinfo, err := os.Stat(newent)
 
-		if dirname := filepath.Dir(newent); dirname != "." &&
-			(zhip.LocateZipEntry(newent) == -1)  {
-				zhip.RecordNewEntry(awriter, dirname)
-		}
-
 		if fVerbose {
 			fmt.Printf("a %s ", newent)
 		}
