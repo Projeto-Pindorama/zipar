@@ -33,7 +33,6 @@ var (
 	destdir          string
 	archive          string
 	areader          *zip.ReadCloser
-	awriter          *zip.Writer
 	largest_file     int
 )
 
@@ -45,7 +44,7 @@ func main() {
 		"Print archive information as JSON.")
 	flag.BoolVar(&fExplode, "explode", false,
 		"Explode the archive into the disk, ignoring directory hierarchy. "+
-			"Can also be used when creating archives.")
+			"Can also be used when creating archives. (TODO)")
 	flag.BoolVar(&fVerbose, "verbose", false,
 		"Enable verbose output.")
 	flag.BoolVar(&fCreate, "create", false,
@@ -95,10 +94,10 @@ func main() {
 					"Failed to create %s: %s\n", archive, err)
 			}
 			defer newfile.Close()
-			awriter = zip.NewWriter(newfile)
+			awriter := zip.NewWriter(newfile)
 
 			/* Assuming extra arguments as files to be added. */
-			record_entries(extra)
+			record_entries(awriter, extra)
 			_ = awriter.Close()
 		case fTableOfContents, fExtract:
 			areader, err = zip.OpenReader(archive)
@@ -183,7 +182,7 @@ func print_entry_info(file *zip.FileHeader) {
 	fmt.Println(file.Name)
 }
 
-func record_entries(files []string) {
+func record_entries(awriter *zip.Writer, files []string) {
 	for f := 0; f < len(files); f++ {
 		newent := files[f]
 		nentinfo, err := os.Stat(newent)
@@ -191,7 +190,7 @@ func record_entries(files []string) {
 		if fVerbose {
 			fmt.Printf("a %s ", newent)
 		}
-		wbytes, err := record_entry(newent)
+		wbytes, err := zhip.RecordNewEntry(awriter, newent)
 		if err != nil {
 			fmt.Fprintf(os.Stderr,
 				"Failed to record entry '%s' into zipfile: %s\n", 
@@ -207,7 +206,7 @@ func record_entries(files []string) {
 			if fVerbose {
 				fmt.Println("directory")
 			}
-			err := record_dents_recursively(newent)
+			err := record_dents_recursively(awriter, newent)
 			if err != nil {
 				fmt.Fprintln(os.Stderr,
 					"Failed to record directory %s to zipfile: %s\n",
@@ -222,7 +221,7 @@ func record_entries(files []string) {
 }
 
 /* TODO: Sort of "gambiarrento". Of course this will have to change. */
-func record_dents_recursively(dir string) error {
+func record_dents_recursively(awriter *zip.Writer, dir string) error {
 	direntries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -230,58 +229,15 @@ func record_dents_recursively(dir string) error {
 	for e := 0; e < len(direntries); e++ {
 		dentry := direntries[e].Name()
 		dentry_fpath := filepath.Join(dir, dentry)
-		record_entries([]string{dentry_fpath})
+		record_entries(awriter, []string{dentry_fpath})
 		if direntries[e].IsDir() {
-			err := record_dents_recursively(dentry_fpath)
+			err := record_dents_recursively(awriter, dentry_fpath)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	return nil
-}
-
-/* Possibly moving this to libcmon. */
-func record_entry(name string) (int, error) {
-	var wbytes int
-	file, err := os.Stat(name)
-	if err != nil {
-		return 0, err
-	}
-
-	if file.IsDir() {
-		/*
-		 * From 'go doc zip.Create':
-		 * "To create a directory instead of a file,
-		 * add a trailing slash to the name."
-		 */
-		if name[(len(name)-1):] != "/" {
-			name += "/"
-		}
-	}
-	entfhdr, err_fhdr := zip.FileInfoHeader(file)
-	/* TODO: Add option to select the compression method. */
-	if !file.IsDir() {
-		entfhdr.Method = zip.Deflate
-	}
-	ent, err_creat := awriter.CreateHeader(entfhdr)
-	err = errors.Join(err_fhdr, err_creat)
-	if err != nil {
-		return 0, err
-	}
-
-	if !file.IsDir() {
-		data, err := os.ReadFile(name)
-		if err != nil {
-			return 0, err
-		}
-		wbytes, err = ent.Write(data)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	return wbytes, nil
 }
 
 func extract_entry(file *zip.FileHeader) {
