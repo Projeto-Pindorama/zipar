@@ -95,7 +95,8 @@ func main() {
 			}
 			defer newfile.Close()
 			awriter := zip.NewWriter(newfile)
-
+			/* Best compression per default. */
+			zhip.CompressionMethod = zip.Deflate
 			/* Assuming extra arguments as files to be added. */
 			record_entries(awriter, extra)
 			_ = awriter.Close()
