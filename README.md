@@ -17,6 +17,25 @@ It is the first program to ever making use of the
 [libcmon](https://pindorama.net.br/libcmon), which is still on testing and with
 features being gradually implemented.
 
+## Some history (because why not?)
+
+This project originally was thought as some sort of shell script that would work
+as a boilerplate command to Info-ZIP's
+[``unzip``](https://infozip.sourceforge.net/UnZip.html)/
+[``zip``](https://infozip.sourceforge.net/Zip.html) programs so that both could
+be used in a saner<sup><a href="https://xkcd.com/1168/"
+target="_blank">(or maybe not)</a></sup> way. Some time passed and, in
+mid-2023, I decided to start doing ~~and ended up not finishing~~ a [cbr to pdf
+converter](https://github.com/takusuman/cbr2pdf), and saw that dealing with zip
+files using Go's ``archive/zip`` library was actually pretty good, so it would
+be better to have ``zipar`` as an independent program than as a boilerplate to
+two binaries. Then, ≃1.7 years in the future (now), I decided to recycle that
+old code from cbr2pdf into libcmon and develop zipar over it.  
+Of course, it is not as far as portable as Info-ZIP's unzip/zip programs, nor it
+has __all__ of the functionality of these (yet), but I can say it is pretty much
+reliable as far as I have tested, and that it will be at Copacabana's base
+system. Testing is welcome.
+
 ## Licence
 The
 [MIT licence](https://github.com/Projeto-Pindorama/libcmon?tab=License-1-ov-file).
