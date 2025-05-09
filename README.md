@@ -8,7 +8,7 @@ From [Wiktionary](https://en.wiktionary.org), adapted:
 >
 > Etymology: From English zip + [-ar](https://en.wiktionary.org/wiki/-ar#Etymology_1_7)
 
-``zipar`` is a program that extracts, lists ~~and creates~~ (TODO)
+``zipar`` is a program that extracts, lists and creates
 [PKZIP](https://support.pkware.com/pkzip/appnote)-compatible files, but using
 a ``tar``(1)-like interface inspired on
 [Schily's tar](https://cdrtools.sourceforge.net/old/private/man/star/star.1.html)
