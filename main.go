@@ -206,38 +206,24 @@ func record_entries(awriter *zip.Writer, files []string) {
 			if fVerbose {
 				fmt.Println("directory")
 			}
-			err := record_dents_recursively(awriter, newent)
+			direntries, err := os.ReadDir(newent)
 			if err != nil {
 				fmt.Fprintln(os.Stderr,
 					"Failed to record directory %s to zipfile: %s\n",
 					newent, err)
 			}
+			for e := 0; e < len(direntries); e++ {
+				dentry := direntries[e].Name()
+				dentry_fpath := filepath.Join(newent, dentry)
+				record_entries(awriter, []string{dentry_fpath})
+			}
+
 		} else {
 			if fVerbose {
 				fmt.Printf("%d bytes\n", wbytes)
 			}
 		}
 	}
-}
-
-/* TODO: Sort of "gambiarrento". Of course this will have to change. */
-func record_dents_recursively(awriter *zip.Writer, dir string) error {
-	direntries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for e := 0; e < len(direntries); e++ {
-		dentry := direntries[e].Name()
-		dentry_fpath := filepath.Join(dir, dentry)
-		record_entries(awriter, []string{dentry_fpath})
-		if direntries[e].IsDir() {
-			err := record_dents_recursively(awriter, dentry_fpath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func extract_entry(file *zip.FileHeader) {
