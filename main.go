@@ -98,7 +98,9 @@ func main() {
 			/* Best compression per default. */
 			zhip.CompressionMethod = zip.Deflate
 			/* Assuming extra arguments as files to be added. */
-			record_entries(awriter, extra)
+			for f := 0; f < len(extra); f++ {
+				record_entry(awriter, extra[f])
+			}
 			_ = awriter.Close()
 		case fTableOfContents, fExtract:
 			areader, err = zip.OpenReader(archive)
@@ -183,46 +185,42 @@ func print_entry_info(file *zip.FileHeader) {
 	fmt.Println(file.Name)
 }
 
-func record_entries(awriter *zip.Writer, files []string) {
-	for f := 0; f < len(files); f++ {
-		newent := files[f]
-		nentinfo, err := os.Stat(newent)
+func record_entry(awriter *zip.Writer, newent string) {
+	nentinfo, err := os.Stat(newent)
 
+	if fVerbose {
+		fmt.Printf("a %s ", newent)
+	}
+
+	wbytes, err := zhip.RecordNewEntry(awriter, newent)
+	if err != nil {
+		fmt.Fprintf(os.Stderr,
+			"Failed to record entry '%s' into zipfile: %s\n",
+			newent, err)
+	}
+
+	/*
+	 * Recursive directory logic.
+	 */
+	if nentinfo.IsDir() {
 		if fVerbose {
-			fmt.Printf("a %s ", newent)
+			fmt.Println("directory")
 		}
-		wbytes, err := zhip.RecordNewEntry(awriter, newent)
+		direntries, err := os.ReadDir(newent)
 		if err != nil {
-			fmt.Fprintf(os.Stderr,
-				"Failed to record entry '%s' into zipfile: %s\n", 
+			fmt.Fprintln(os.Stderr,
+				"Failed to record directory %s to zipfile: %s\n",
 				newent, err)
 		}
+		for e := 0; e < len(direntries); e++ {
+			dentry := direntries[e].Name()
+			dentry_fpath := filepath.Join(newent, dentry)
+			record_entry(awriter, dentry_fpath)
+		}
 
-		/*
-		 * Recursive directory logic.
-		 * TODO: Perhaps record_dents_recursively()
-		 * can be reduced into this.
-		 */
-		if nentinfo.IsDir() {
-			if fVerbose {
-				fmt.Println("directory")
-			}
-			direntries, err := os.ReadDir(newent)
-			if err != nil {
-				fmt.Fprintln(os.Stderr,
-					"Failed to record directory %s to zipfile: %s\n",
-					newent, err)
-			}
-			for e := 0; e < len(direntries); e++ {
-				dentry := direntries[e].Name()
-				dentry_fpath := filepath.Join(newent, dentry)
-				record_entries(awriter, []string{dentry_fpath})
-			}
-
-		} else {
-			if fVerbose {
-				fmt.Printf("%d bytes\n", wbytes)
-			}
+	} else {
+		if fVerbose {
+			fmt.Printf("%d bytes\n", wbytes)
 		}
 	}
 }
