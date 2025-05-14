@@ -15,7 +15,12 @@ a ``tar``(1)-like interface inspired on
 and [Heirloom (UNIX v7) tar](http://heirloom-ng.pindorama.net.br/manual/man1/tar.1.html).  
 It is the first program to ever making use of the
 [libcmon](https://pindorama.net.br/libcmon), which is still on testing and with
-features being gradually implemented.
+features being gradually implemented.  
+**__Not__** to be confunded with @ushitora-anqou's
+[ZipAr](https://github.com/ushitora-anqou/zipar), which just archives files
+with no compression, using multi-thread parallelism for velocity, and that
+appears to be sort of niche compared to this project considering it does
+nothing besides that. It is also written entirely in OCaml.
 
 ## Some history (because why not?)
 
