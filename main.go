@@ -32,13 +32,10 @@ var (
 	fExtract         bool
 	destdir          string
 	archive          string
-	areader          *zip.ReadCloser
 	largest_file     int
 )
 
 func main() {
-	var err error
-
 	/* Options. */
 	flag.BoolVar(&fJSON, "json", false,
 		"Print archive information as JSON.")
@@ -103,7 +100,7 @@ func main() {
 			}
 			_ = awriter.Close()
 		case fTableOfContents, fExtract:
-			areader, err = zip.OpenReader(archive)
+			areader, err := zip.OpenReader(archive)
 			if err != nil {
 				fmt.Fprintf(os.Stderr,
 					"failed to open %s: %s\n",
@@ -165,7 +162,7 @@ func main() {
 					case fTableOfContents:
 						print_entry_info(file)
 					case fExtract:
-						extract_entry(file)
+						extract_entry(areader, file)
 				}
 			}
 	}
@@ -225,7 +222,7 @@ func record_entry(awriter *zip.Writer, newent string) {
 	}
 }
 
-func extract_entry(file *zip.FileHeader) {
+func extract_entry(areader *zip.ReadCloser, file *zip.FileHeader) {
 	var err error
 	var dest_path string
 	var dest *os.File
