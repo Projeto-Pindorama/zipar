@@ -16,7 +16,8 @@ and [Heirloom (UNIX v7) tar](http://heirloom-ng.pindorama.net.br/manual/man1/tar
 It is the first program to ever making use of the
 [libcmon](https://pindorama.net.br/libcmon), which is still on testing and with
 features being gradually implemented.  
-**__Not__** to be confunded with @ushitora-anqou's
+**__Not__** to be confunded with Ryotaro Banno's
+([``ushitora-anqou``](https://github.com/ushitora-anqou))
 [ZipAr](https://github.com/ushitora-anqou/zipar), which just archives files
 with no compression, using multi-thread parallelism for velocity, and that
 appears to be sort of niche compared to this project considering it does
