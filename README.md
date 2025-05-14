@@ -49,16 +49,16 @@ system. Testing is welcome.
 library first will be highlighted as such with the "👊" symbol.
 
 - [X] ``tar``'s "tripartite": create, extract and list files;
-- [] Be able to select the compression level (similar to Info-ZIP's zip '``-Z``'
+- [ ] Be able to select the compression level (similar to Info-ZIP's zip '``-Z``'
   option);
-- [] Be able to create an archive using the std.in./an file (similar to UNIX
+- [ ] Be able to create an archive using the std.in./an file (similar to UNIX
   v7/Heirloom ``tar``'s ``-I`` option) as the list of files to be added;
-- [] Print information with the ``--json`` option that will be actually useful
+- [ ] Print information with the ``--json`` option that will be actually useful
   (needs a new struct type at zhip 👊);
-- [] "Explode"/junk or ignore directories when creating archives 👊;
-- [] Extract files with passwords 👊;
-- [] Amend/update/exclude entries from zip files 👊;
-- [] Interpret the [``Extra`` section of the zip.FileHeader
+- [ ] "Explode"/junk or ignore directories when creating archives 👊;
+- [ ] Extract files with passwords 👊;
+- [ ] Amend/update/exclude entries from zip files 👊;
+- [ ] Interpret the [``Extra`` section of the zip.FileHeader
   struct](https://pkg.go.dev/archive/zip#FileHeader) for information such as
   Info-ZIP's extensions for UNIX permissions, NTFS info., etc. 👊
 
