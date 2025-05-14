@@ -42,6 +42,26 @@ has __all__ of the functionality of these (yet), but I can say it is pretty much
 reliable as far as I have tested, and that it will be at Copacabana's base
 system. Testing is welcome.
 
+## Features
+
+**NOTE**: Features that have to be implemented via the
+[libcmon/zhip](https://pkg.go.dev/pindorama.net.br/libcmon/zhip)
+library first will be highlighted as such with the "👊" symbol.
+
+- [X] ``tar``'s "tripartite": create, extract and list files;
+- [] Be able to select the compression level (similar to Info-ZIP's zip '``-Z``'
+  option);
+- [] Be able to create an archive using the std.in./an file (similar to UNIX
+  v7/Heirloom ``tar``'s ``-I`` option) as the list of files to be added;
+- [] Print information with the ``--json`` option that will be actually useful
+  (needs a new struct type at zhip 👊);
+- [] "Explode"/junk or ignore directories when creating archives 👊;
+- [] Extract files with passwords 👊;
+- [] Amend/update/exclude entries from zip files 👊;
+- [] Interpret the [``Extra`` section of the zip.FileHeader
+  struct](https://pkg.go.dev/archive/zip#FileHeader) for information such as
+  Info-ZIP's extensions for UNIX permissions, NTFS info., etc. 👊
+
 ## Licence
 The
 [MIT licence](https://github.com/Projeto-Pindorama/libcmon?tab=License-1-ov-file).
